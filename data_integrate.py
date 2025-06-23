@@ -20,8 +20,12 @@ import tqdm
 import concurrent.futures
 
 
-log_path = dirname(__file__) + '/log/' + str(datetime.datetime.now().strftime(
-    '%Y-%m-%d')) + '_nezha.log'
+log_path = (
+    dirname(__file__)
+    + "/log/"
+    + str(datetime.datetime.now().strftime("%Y-%m-%d"))
+    + "_nezha.log"
+)
 logger = Logger(log_path, logging.DEBUG, __name__).getlog()
 
 
@@ -53,46 +57,58 @@ def get_logs_within_trace_map(trace_reader, log_reader, trace_id):
     trace = {"traceid": trace_id, "spans": []}
     try:
         # find all span within a trace
-        spans = trace_reader.loc[[trace_id], ['SpanID', 'ParentID',
-                                              'PodName', 'StartTimeUnixNano', 'OperationName']]
-        if len(spans['SpanID']) > 0:
-            for span_index in range(len(spans['SpanID'])):
-                span_id = spans['SpanID'][span_index]
-                pod = spans['PodName'][span_index]
+        spans = trace_reader.loc[
+            [trace_id],
+            ["SpanID", "ParentID", "PodName", "StartTimeUnixNano", "OperationName"],
+        ]
+        if len(spans["SpanID"]) > 0:
+            for span_index in range(len(spans["SpanID"])):
+                span_id = spans["SpanID"][span_index]
+                pod = spans["PodName"][span_index]
 
                 # Add opration event first
-                span = {"spanid": span_id,
-                        "parentid": spans['ParentID'][span_index],
-                        "pod": pod, "events": []}
+                span = {
+                    "spanid": span_id,
+                    "parentid": spans["ParentID"][span_index],
+                    "pod": pod,
+                    "events": [],
+                }
 
                 # record span start and end event
-                start_event = log = spans['OperationName'][span_index] + "_start"
-                end_event = log = spans['OperationName'][span_index] + "_end"
-                startlog = {"timestamp": spans['StartTimeUnixNano'][span_index],
-                            "event": log_parsing(start_event, pod=pod)}
+                start_event = log = spans["OperationName"][span_index] + "_start"
+                end_event = log = spans["OperationName"][span_index] + "_end"
+                startlog = {
+                    "timestamp": spans["StartTimeUnixNano"][span_index],
+                    "event": log_parsing(start_event, pod=pod),
+                }
                 span["events"].append(startlog)
-                endlog = {"timestamp": spans['EndTimeUnixNano'][span_index],
-                          "event": log_parsing(end_event, pod=pod)}
+                endlog = {
+                    "timestamp": spans["EndTimeUnixNano"][span_index],
+                    "event": log_parsing(end_event, pod=pod),
+                }
                 span["events"].append(endlog)
 
                 try:
                     # Find all log within a span
-                    logs = log_reader.loc[[span_id],
-                                          ['TimeUnixNano', 'Log']]
-                    if len(logs['TimeUnixNano']) > 0:
-                        for log_index in range(len(logs['TimeUnixNano'])):
+                    logs = log_reader.loc[[span_id], ["TimeUnixNano", "Log"]]
+                    if len(logs["TimeUnixNano"]) > 0:
+                        for log_index in range(len(logs["TimeUnixNano"])):
                             # Add log events
-                            log = {"timestamp": logs['TimeUnixNano'][log_index],
-                                   "event": log_parsing(log=logs['Log'][log_index], pod=pod)}
+                            log = {
+                                "timestamp": logs["TimeUnixNano"][log_index],
+                                "event": log_parsing(
+                                    log=logs["Log"][log_index], pod=pod
+                                ),
+                            }
                             span["events"].append(log)
-                except (Exception):
+                except Exception:
                     pass
                 # sort event by event timestamp
-                span['events'].sort(key=lambda k: (k.get('timestamp', 0)))
+                span["events"].sort(key=lambda k: (k.get("timestamp", 0)))
                 trace["spans"].append(span)
                 # sort span by span start timestamp
-                trace['spans'].sort(key=lambda k: k['events'][0]['timestamp'])
-    except (Exception):
+                trace["spans"].sort(key=lambda k: k["events"][0]["timestamp"])
+    except Exception:
         pass
     return trace
 
@@ -128,7 +144,7 @@ class Span(object):
         self.events.append(event)
 
     def new_timestamp(self):
-        return self.events[len(self.events)-1].timestamp - 1
+        return self.events[len(self.events) - 1].timestamp - 1
 
     def show_all_events(self):
         logger.info("%s,%s,%s", self.spanid, self.parentid, self.pod)
@@ -144,14 +160,19 @@ class Event(object):
         self.timestamp = timestamp
         self.spanid = spanid
         self.parentid = parentid
-        self.ns = ns 
+        self.ns = ns
 
     def show_event(self):
-        logger.info("%s, %s, %s, %s", self.timestamp, self.spanid, self.event,
-                    from_id_to_template(self.event, self.ns))
+        logger.info(
+            "%s, %s, %s, %s",
+            self.timestamp,
+            self.spanid,
+            self.event,
+            from_id_to_template(self.event, self.ns),
+        )
 
 
-class EventGraph():
+class EventGraph:
     def __init__(self, log_template_miner):
         self.adjacency_list = {}
         self.node_list = set()
@@ -174,15 +195,22 @@ class EventGraph():
 
     def print_adj_list(self):
         for key in self.adjacency_list.keys():
-            print(f'node {key}: {self.adjacency_list[key]}')
+            print(f"node {key}: {self.adjacency_list[key]}")
 
     def show_graph(self):
         for key in self.adjacency_list.keys():
-            logger.info("head:%s %s" %
-                        (key.event, from_id_to_template(key.event, self.log_template_miner)))
+            logger.info(
+                "head:%s %s"
+                % (key.event, from_id_to_template(key.event, self.log_template_miner))
+            )
             for item in self.adjacency_list[key]:
-                logger.info("tail:%s %s" %
-                            (item.event, from_id_to_template(item.event, self.log_template_miner)))
+                logger.info(
+                    "tail:%s %s"
+                    % (
+                        item.event,
+                        from_id_to_template(item.event, self.log_template_miner),
+                    )
+                )
             logger.info("----")
 
     def get_deepth_pod(self, traget_event):
@@ -197,7 +225,11 @@ class EventGraph():
                         if deepth == 0:
                             pod = item.pod
                         flag = True
-                        if "start" in from_id_to_template(key.event, self.log_template_miner) and "TraceID" not in from_id_to_template(key.event, self.log_template_miner):
+                        if "start" in from_id_to_template(
+                            key.event, self.log_template_miner
+                        ) and "TraceID" not in from_id_to_template(
+                            key.event, self.log_template_miner
+                        ):
                             deepth = deepth + 1
                         break
                 if flag == True:
@@ -219,7 +251,9 @@ class EventGraph():
         return self.support_dict
 
 
-def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,log_template_miner):
+def get_events_within_trace(
+    trace_reader, log_reader, trace_id, alarm_list, ns, log_template_miner
+):
     """
     func get_events_within_trace: get all metric alarm, log, span within a trace and transform to event
     :parameter
@@ -236,49 +270,75 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
     log_span_id_list = log_reader.index.tolist()
     try:
         # find all span within a trace
-        spans = trace_reader.loc[[trace_id], ['SpanID', 'ParentID',
-                                              'PodName', 'StartTimeUnixNano', 'EndTimeUnixNano', 'OperationName']]
+        spans = trace_reader.loc[
+            [trace_id],
+            [
+                "SpanID",
+                "ParentID",
+                "PodName",
+                "StartTimeUnixNano",
+                "EndTimeUnixNano",
+                "OperationName",
+            ],
+        ]
         # pdb.set_trace()
         # print(len(spans['SpanID']))
-        if len(spans['SpanID']) > 0:
+        if len(spans["SpanID"]) > 0:
             # process span independentlt and order by timestamp
-            for span_index in range(len(spans['SpanID'])):
+            for span_index in range(len(spans["SpanID"])):
                 # span event
-                span_id = spans['SpanID'].iloc[span_index]
-                parent_id = spans['ParentID'].iloc[span_index]
-                pod = spans['PodName'].iloc[span_index]
+                span_id = spans["SpanID"].iloc[span_index]
+                parent_id = spans["ParentID"].iloc[span_index]
+                pod = spans["PodName"].iloc[span_index]
                 # Add opration event first
                 span = Span(span_id, parent_id, pod)
                 # record span start and end event
 
-                service = pod.rsplit('-', 1)[0]
-                service = service.rsplit('-', 1)[0]
+                service = pod.rsplit("-", 1)[0]
+                service = service.rsplit("-", 1)[0]
 
-                start_event = service + " " + \
-                    spans['OperationName'].iloc[span_index] + " start"
-                end_event = service + " " + \
-                    spans['OperationName'].iloc[span_index] + " end"
+                start_event = (
+                    service + " " + spans["OperationName"].iloc[span_index] + " start"
+                )
+                end_event = (
+                    service + " " + spans["OperationName"].iloc[span_index] + " end"
+                )
 
-                span.append_event(Event(timestamp=np.ceil(spans['StartTimeUnixNano'].iloc[span_index]).astype(int),
-                                        event=log_parsing(log=start_event, pod=pod, log_template_miner=log_template_miner), pod=pod, ns=ns, spanid=span_id, parentid=parent_id))
+                span.append_event(
+                    Event(
+                        timestamp=np.ceil(
+                            spans["StartTimeUnixNano"].iloc[span_index]
+                        ).astype(int),
+                        event=log_parsing(
+                            log=start_event,
+                            pod=pod,
+                            log_template_miner=log_template_miner,
+                        ),
+                        pod=pod,
+                        ns=ns,
+                        spanid=span_id,
+                        parentid=parent_id,
+                    )
+                )
 
                 end_timestamp = np.ceil(
-                    spans['EndTimeUnixNano'].iloc[span_index]).astype(int)
+                    spans["EndTimeUnixNano"].iloc[span_index]
+                ).astype(int)
 
                 # log event
                 try:
                     # pdb.set_trace()
                     if span_id in log_span_id_list:
-                        logs = log_reader.loc[[span_id],
-                                              ['TimeUnixNano', 'Log']]
+                        logs = log_reader.loc[[span_id], ["TimeUnixNano", "Log"]]
 
-                        if len(logs['TimeUnixNano']) > 0:
-                            for log_index in range(len(logs['TimeUnixNano'])):
+                        if len(logs["TimeUnixNano"]) > 0:
+                            for log_index in range(len(logs["TimeUnixNano"])):
                                 # Add log events
                                 # logger.info(logs['Log'].iloc[log_index])
-                                log = logs['Log'].iloc[log_index]
+                                log = logs["Log"].iloc[log_index]
                                 timestamp = np.ceil(
-                                    logs['TimeUnixNano'].iloc[log_index]).astype(int)
+                                    logs["TimeUnixNano"].iloc[log_index]
+                                ).astype(int)
 
                                 # for log end after span
                                 if timestamp - end_timestamp > 0:
@@ -287,8 +347,20 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
 
                                 # if log_parsing(log=log, pod=pod) != histroy_id:
                                 #     histroy_id = log_parsing(log=log, pod=pod)
-                                span.append_event(Event(timestamp=timestamp,
-                                                        event=log_parsing(log=log, pod=pod, log_template_miner=log_template_miner), pod=pod, ns=ns, spanid=span_id, parentid=parent_id))
+                                span.append_event(
+                                    Event(
+                                        timestamp=timestamp,
+                                        event=log_parsing(
+                                            log=log,
+                                            pod=pod,
+                                            log_template_miner=log_template_miner,
+                                        ),
+                                        pod=pod,
+                                        ns=ns,
+                                        spanid=span_id,
+                                        parentid=parent_id,
+                                    )
+                                )
 
                     # else:
                     # logger.debug("Spanid %s is not appear in log" % span_id)
@@ -296,8 +368,20 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
                     logger.error("Catch an exception:", e)
                     pass
 
-                span.append_event(Event(timestamp=end_timestamp,
-                                        event=log_parsing(log=end_event, pod=pod, log_template_miner=log_template_miner), pod=pod, ns=ns,spanid=span_id, parentid=parent_id))
+                span.append_event(
+                    Event(
+                        timestamp=end_timestamp,
+                        event=log_parsing(
+                            log=end_event,
+                            pod=pod,
+                            log_template_miner=log_template_miner,
+                        ),
+                        pod=pod,
+                        ns=ns,
+                        spanid=span_id,
+                        parentid=parent_id,
+                    )
+                )
                 # alarm event
                 # hipster
                 if ns == "hipster":
@@ -310,8 +394,28 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
                                 # logger.info(
                                 #     "%s, %s", alarm_dict["pod"], alarm_dict["alarm"])
                                 for index in range(len(alarm_dict["alarm"])):
-                                    span.append_event(Event(timestamp=np.ceil(spans['StartTimeUnixNano'].iloc[span_index]).astype(int) + index + 1,
-                                                            event=log_parsing(log=alarm_dict["alarm"][index]["metric_type"], pod="alarm",log_template_miner=log_template_miner), pod=pod, ns=ns,spanid=span_id, parentid=parent_id))
+                                    span.append_event(
+                                        Event(
+                                            timestamp=np.ceil(
+                                                spans["StartTimeUnixNano"].iloc[
+                                                    span_index
+                                                ]
+                                            ).astype(int)
+                                            + index
+                                            + 1,
+                                            event=log_parsing(
+                                                log=alarm_dict["alarm"][index][
+                                                    "metric_type"
+                                                ],
+                                                pod="alarm",
+                                                log_template_miner=log_template_miner,
+                                            ),
+                                            pod=pod,
+                                            ns=ns,
+                                            spanid=span_id,
+                                            parentid=parent_id,
+                                        )
+                                    )
                                 # only add alarm event for the first span group
                                 # alarm_list.pop(i)
                                 break
@@ -322,11 +426,29 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
                             # logger.info(
                             #     "%s, %s", alarm_dict["pod"], alarm_dict["alarm"])
                             for index in range(len(alarm_dict["alarm"])):
-                                span.append_event(Event(timestamp=np.ceil(spans['StartTimeUnixNano'].iloc[span_index]).astype(int) + index + 1,
-                                                        event=log_parsing(log=alarm_dict["alarm"][index]["metric_type"], pod="alarm",log_template_miner=log_template_miner), pod=pod, ns=ns,spanid=span_id, parentid=parent_id))
+                                span.append_event(
+                                    Event(
+                                        timestamp=np.ceil(
+                                            spans["StartTimeUnixNano"].iloc[span_index]
+                                        ).astype(int)
+                                        + index
+                                        + 1,
+                                        event=log_parsing(
+                                            log=alarm_dict["alarm"][index][
+                                                "metric_type"
+                                            ],
+                                            pod="alarm",
+                                            log_template_miner=log_template_miner,
+                                        ),
+                                        pod=pod,
+                                        ns=ns,
+                                        spanid=span_id,
+                                        parentid=parent_id,
+                                    )
+                                )
                             # only add alarm event for the first span group
                             # alarm_list.pop(i)
-                            break                    
+                            break
 
                 # sort event by event timestamp
                 span.sort_events()
@@ -342,7 +464,7 @@ def get_events_within_trace(trace_reader, log_reader, trace_id, alarm_list, ns,l
     return trace
 
 
-def generate_event_chain(alarm_list, trace,log_template_miner):
+def generate_event_chain(alarm_list, trace, log_template_miner):
     """
     func generate_event_chain:  integrate log and trace to event chain (Discarded)
     :parameter
@@ -363,11 +485,21 @@ def generate_event_chain(alarm_list, trace,log_template_miner):
         elif len(span.events) == 2:
             # for client span
             # find all event index of parent span
-            parent_index1 = list(locate(event_chain, lambda event: event.spanid ==
-                                        span.parentid and event.pod == span.pod))
+            parent_index1 = list(
+                locate(
+                    event_chain,
+                    lambda event: event.spanid == span.parentid
+                    and event.pod == span.pod,
+                )
+            )
             # find all event index of spans having the same parent span
-            parent_index2 = list(locate(event_chain, lambda event: event.parentid ==
-                                        span.parentid and event.pod == span.pod))
+            parent_index2 = list(
+                locate(
+                    event_chain,
+                    lambda event: event.parentid == span.parentid
+                    and event.pod == span.pod,
+                )
+            )
             parent_index = parent_index2 + parent_index1
             # reverse order
             parent_index.sort(reverse=True)
@@ -376,22 +508,28 @@ def generate_event_chain(alarm_list, trace,log_template_miner):
             for event in span.events:
                 for index in parent_index:
                     if event.timestamp > event_chain[index].timestamp:
-                        event_chain.insert(index+1, event)
+                        event_chain.insert(index + 1, event)
                         break
 
         else:
             # # find all event index of parent span
-            parent_index1 = list(locate(event_chain, lambda event: event.spanid ==
-                                        span.parentid))
-            parent_index2 = list(locate(event_chain, lambda event: event.parentid ==
-                                        span.parentid and event.pod == span.pod))
+            parent_index1 = list(
+                locate(event_chain, lambda event: event.spanid == span.parentid)
+            )
+            parent_index2 = list(
+                locate(
+                    event_chain,
+                    lambda event: event.parentid == span.parentid
+                    and event.pod == span.pod,
+                )
+            )
             parent_index = parent_index2 + parent_index1
             parent_index.sort(reverse=True)
             span.events.reverse()
             for event in span.events:
                 for index in parent_index:
                     if event.timestamp > event_chain[index].timestamp:
-                        event_chain.insert(index+1, event)
+                        event_chain.insert(index + 1, event)
                         break
 
     # for index in range(1, len(event_chain)):
@@ -402,19 +540,23 @@ def generate_event_chain(alarm_list, trace,log_template_miner):
 
     # chain event class to str: pod_event
     for index in range(len(event_chain)):
-        pod_event_chain_list.append(event_chain[index].pod +
-                                    "_" + str(event_chain[index].event))
+        pod_event_chain_list.append(
+            event_chain[index].pod + "_" + str(event_chain[index].event)
+        )
         event_chain_list.append(event_chain[index].event)
 
     # insert alarm before the first event belonging to the pod has alarm
     if len(alarm_list) > 0:
         for pod_alarm in alarm_list:
-            pod = pod_alarm['pod']
+            pod = pod_alarm["pod"]
             for index in range(len(pod_event_chain_list)):
                 if re.search(pod, pod_event_chain_list[index]):
-                    for alarm in pod_alarm['alarm']:
+                    for alarm in pod_alarm["alarm"]:
                         event = log_parsing(
-                            log=alarm['metric_type'], pod="alarm", log_template_miner=log_template_miner)
+                            log=alarm["metric_type"],
+                            pod="alarm",
+                            log_template_miner=log_template_miner,
+                        )
                         pod_event = pod + str(event)
                         pod_event_chain_list.insert(index, pod_event)
                         event_chain_list.insert(index, event)
@@ -437,8 +579,7 @@ def generate_event_graph(trace, log_template_miner):
     for span in trace.spans:
         # add edge in the span group
         for index in range(1, len(span.events)):
-            event_graph.add_edge(
-                span.events[index-1], span.events[index])
+            event_graph.add_edge(span.events[index - 1], span.events[index])
 
     for span in trace.spans:
         # add relation from parent to child
@@ -452,13 +593,13 @@ def generate_event_graph(trace, log_template_miner):
                     for index in range(1, len(parent_span.events)):
                         if parent_span.events[index].timestamp > start_timestamp:
                             event_graph.add_edge(
-                                parent_span.events[index-1], span.events[0])
+                                parent_span.events[index - 1], span.events[0]
+                            )
                             break
 
                 else:
                     # if not in the same pod, insert after the first span of parent group
-                    event_graph.add_edge(
-                        parent_span.events[0], span.events[0])
+                    event_graph.add_edge(parent_span.events[0], span.events[0])
                 break
     # event_graph.show_graph()
     # event_graph.get_support()
@@ -466,7 +607,9 @@ def generate_event_graph(trace, log_template_miner):
     return event_graph
 
 
-def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_template_miner):
+def data_integrate(
+    trace_file, trace_id_file, log_file, alarm_list, ns, log_template_miner
+):
     """
     func data_integrate: integrate multimodle data to event graph
     :parameter
@@ -481,11 +624,28 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
     logger.info(alarm_list)
     # alarm_list = []
     trace_id_reader = pd.read_csv(
-        trace_id_file, index_col=False, header=None, engine='c')
+        trace_id_file, index_col=False, header=None, engine="c"
+    )
     trace_reader = pd.read_csv(
-        trace_file, index_col='TraceID', usecols=['TraceID', 'SpanID', 'ParentID', 'PodName', 'StartTimeUnixNano', 'EndTimeUnixNano', 'OperationName'],engine='c')
-    log_reader = pd.read_csv(log_file, index_col='SpanID', usecols=[
-        'TimeUnixNano', 'SpanID', 'Log'], engine='c')
+        trace_file,
+        index_col="TraceID",
+        usecols=[
+            "TraceID",
+            "SpanID",
+            "ParentID",
+            "PodName",
+            "StartTimeUnixNano",
+            "EndTimeUnixNano",
+            "OperationName",
+        ],
+        engine="c",
+    )
+    log_reader = pd.read_csv(
+        log_file,
+        index_col="SpanID",
+        usecols=["TimeUnixNano", "SpanID", "Log"],
+        engine="c",
+    )
     log_sequences = []
     traces = []
     # print(datetime.datetime.now())
@@ -502,8 +662,18 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
     # event_graphs.append(graph)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor1:
-        futures1 = {executor1.submit(
-            get_events_within_trace, trace_reader, log_reader, traceid, alarm_list, ns,log_template_miner) for traceid in trace_id_reader[0]}
+        futures1 = {
+            executor1.submit(
+                get_events_within_trace,
+                trace_reader,
+                log_reader,
+                traceid,
+                alarm_list,
+                ns,
+                log_template_miner,
+            )
+            for traceid in trace_id_reader[0]
+        }
 
         for future1 in concurrent.futures.as_completed(futures1):
             trace = future1.result()
@@ -512,8 +682,10 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
         executor1.shutdown()
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor2:
-        futures2 = {executor2.submit(
-            generate_event_graph, trace,log_template_miner) for trace in log_sequences}
+        futures2 = {
+            executor2.submit(generate_event_graph, trace, log_template_miner)
+            for trace in log_sequences
+        }
 
         for future2 in concurrent.futures.as_completed(futures2):
             graph = future2.result()
@@ -551,20 +723,19 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
     return event_graphs
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     date = "2023-01-29"
     hour_min = "08_50"
     construction_data_path = "./construct_data"
-    trace_file = construction_data_path + "/" + \
-        date + "/trace/" + hour_min + "_trace.csv"
-    trace_id_file = construction_data_path + "/" + date + \
-        "/traceid/" + hour_min + "_traceid.csv"
-    log_file = construction_data_path + "/" + date + \
-        "/log/" + hour_min + "_log.csv"
-    
+    trace_file = (
+        construction_data_path + "/" + date + "/trace/" + hour_min + "_trace.csv"
+    )
+    trace_id_file = (
+        construction_data_path + "/" + date + "/traceid/" + hour_min + "_traceid.csv"
+    )
+    log_file = construction_data_path + "/" + date + "/log/" + hour_min + "_log.csv"
+
     ns = "ts"
 
     alarm_list = []
-    event_graphs = data_integrate(
-        trace_file, trace_id_file, log_file, alarm_list, ns)
-    
+    event_graphs = data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns)

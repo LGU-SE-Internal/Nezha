@@ -16,14 +16,16 @@ from drain3.file_persistence import FilePersistence
 from drain3.template_miner_config import TemplateMinerConfig
 
 
-log_path = dirname(__file__) + '/log/' + str(datetime.datetime.now().strftime(
-    '%Y-%m-%d')) + '_nezha.log'
+log_path = (
+    dirname(__file__)
+    + "/log/"
+    + str(datetime.datetime.now().strftime("%Y-%m-%d"))
+    + "_nezha.log"
+)
 logger = Logger(log_path, logging.DEBUG, __name__).getlog()
 
 
-
-
-def log_parsing(log, pod, log_template_miner,logrca=False):
+def log_parsing(log, pod, log_template_miner, logrca=False):
     """
     func log_parsing
     parse log by drain3
@@ -54,10 +56,10 @@ def log_parsing(log, pod, log_template_miner,logrca=False):
         # logger.info(service)
         logger.info(service + " Log Parings Result: " + result_json)
 
-    return result['cluster_id']
+    return result["cluster_id"]
 
 
-def from_id_to_template(id,log_template_miner):
+def from_id_to_template(id, log_template_miner):
     """
     fun from_id_to_template: change template id to template content
     :parameter
@@ -91,89 +93,93 @@ def pod_to_service(log, pod):
     service = ""
     log_message = ""
     try:
-        if re.search(r'adservice', pod):
+        if re.search(r"adservice", pod):
             service = "adservice"
             # "{""log"":""TraceID: 00372df3bf20cf3eebd15423736e205b SpanID: 702371dc44d0f544 GetCartAsync called with userId=a009eb0b-68f6-48cd-9c7f-93ca74f1ddce\n"",""stream"":""stdout"",""time"":""2022-04-15T23:59:55.944837597Z""}"
-            log_message = json.loads(log)['log']
-        elif re.search(r'cartservice', pod):
-            service = 'cartservice'
-            log_message = json.loads(log)['log']
-        elif re.search(r'checkoutservice', pod):
-            service = 'checkoutservice'
+            log_message = json.loads(log)["log"]
+        elif re.search(r"cartservice", pod):
+            service = "cartservice"
+            log_message = json.loads(log)["log"]
+        elif re.search(r"checkoutservice", pod):
+            service = "checkoutservice"
             # "{""log"":""{\""message\"":\""TraceID: bc0149298d10ab94fd332037e32e68aa SpanID: 0137a7322c7d77fd PlaceOrder user_id=\\\""2ae2c9a6-6592-4ea3-8a36-f3d9af17d789\\\"" user_currency=\\\""USD\\\"" successfully\"",\""severity\"":\""info\"",\""timestamp\"":\""2022-04-15T23:59:15.187736033Z\""}\n"",""stream"":""stdout"",""time"":""2022-04-15T23:59:15.187788923Z""}"
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'currencyservice', pod):
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"currencyservice", pod):
             # "{""log"":""{\""severity\"":\""info\"",\""time\"":\""2022-04-15T23:59:43.066Z\"",\""pid\"":1,\""hostname\"":\""currencyservice-cf787dd48-nk84m\"",\""name\"":\""currencyservice-server\"",\""message\"":\""TraceID: 00ee170a2bdc4789137436834674f9ff SpanID: cc3cbbc725c08982 Conversion request successful\"",\""v\"":1}\n"",""stream"":""stdout"",""time"":""2022-04-15T23:59:43.066467543Z""}"
-            service = 'currencyservice'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'emailservice', pod):
-            service = 'emailservice'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'frontend', pod):
-            service = 'frontend'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'paymentservice', pod):
-            service = 'paymentservice'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'productcatalogservice', pod):
-            service = 'productcatalogservice'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'recommendationservice', pod):
-            service = 'recommendationservice'
+            service = "currencyservice"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"emailservice", pod):
+            service = "emailservice"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"frontend", pod):
+            service = "frontend"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"paymentservice", pod):
+            service = "paymentservice"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"productcatalogservice", pod):
+            service = "productcatalogservice"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"recommendationservice", pod):
+            service = "recommendationservice"
             # "{""log"":""{\""timestamp\"": \""2022-04-15T23:59:43.076471Z\"", \""severity\"": \""INFO\"", \""name\"": \""recommendationservice-server\"", \""message\"": \""TraceID: 00ee170a2bdc4789137436834674f9ff SpanID: 6ed521e0cf0c7e67 List Recommendations product_ids=['0PUK6V6EV0', '1YMWWN1N4O', '9SIQT8TOJO', 'LS4PSXUNUM', 'L9ECAV7KIM']\""}\n"",""stream"":""stdout"",""time"":""2022-04-15T23:59:43.076629973Z""}"
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'shippingservice', pod):
-            service = 'shippingservice'
-            log_message = json.loads(json.loads(log)['log'])['message']
-        elif re.search(r'alarm', pod):
-            service = 'alarm'
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"shippingservice", pod):
+            service = "shippingservice"
+            log_message = json.loads(json.loads(log)["log"])["message"]
+        elif re.search(r"alarm", pod):
+            service = "alarm"
             log_message = log
-        elif re.search(r'ts-', pod):
-            service = pod.rsplit('-', 1)[0]
-            service = service.rsplit('-', 1)[0]
+        elif re.search(r"ts-", pod):
+            service = pod.rsplit("-", 1)[0]
+            service = service.rsplit("-", 1)[0]
             # "{""log"":""TraceID: 00372df3bf20cf3eebd15423736e205b SpanID: 702371dc44d0f544 GetCartAsync called with userId=a009eb0b-68f6-48cd-9c7f-93ca74f1ddce\n"",""stream"":""stdout"",""time"":""2022-04-15T23:59:55.944837597Z""}"
-            log_message = json.loads(log)['log']
+            log_message = json.loads(log)["log"]
 
             if len(re.findall(r"  (.+?#.+?) ", log_message)) > 0:
-                log_message = re.findall(
-                    r"  (.+?#.+?) ", log_message)[0]
+                log_message = re.findall(r"  (.+?#.+?) ", log_message)[0]
             elif len(re.findall(r" (.+?#.+?) ", log_message)) > 0:
-                log_message = re.findall(
-                    r" (.+?#.+?) ", log_message)[0]
+                log_message = re.findall(r" (.+?#.+?) ", log_message)[0]
             else:
-                logger.error(
-                    "Regex failed: ", str(log_message))
+                logger.error("Regex failed: ", str(log_message))
         else:
             logger.fatal("Unknown pod %s" % (pod))
 
         return log_message.rstrip(), service
 
-    except (Exception):
+    except Exception:
         # if json.loads failed, return log directly
         return log.rstrip(), service
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 指定文件夹的路径
-    for  i in range(0,4):
+    for i in range(0, 4):
         ns = "hipster"
         config.load(dirname(__file__) + "/log_template/drain3_" + ns + ".ini")
         config.profiling_enabled = False
 
-        path = dirname(__file__) + '/log_template/' + ns + ".bin"
+        path = dirname(__file__) + "/log_template/" + ns + ".bin"
         persistence = FilePersistence(path)
         template_miner = TemplateMiner(persistence, config=config)
-        folder_path_list = ['./rca_data/2022-08-22/log','./rca_data/2022-08-23/log']
+        folder_path_list = ["./rca_data/2022-08-22/log", "./rca_data/2022-08-23/log"]
 
-        for folder_path in folder_path_list:    
+        for folder_path in folder_path_list:
             for root, dirs, files in os.walk(folder_path):
                 for file in files:
-                    log_file = os.path.join(root, file) 
-                    print(log_file)          
-                    log_reader = pd.read_csv(log_file, index_col=False, usecols=[
-                        'PodName', 'TimeUnixNano', 'Log'])
-                    for i in range(1, len(log_reader['Log'])):
-                        log_parsing(log=log_reader['Log'][i], pod=log_reader['PodName'][i], log_template_miner=template_miner)
+                    log_file = os.path.join(root, file)
+                    print(log_file)
+                    log_reader = pd.read_csv(
+                        log_file,
+                        index_col=False,
+                        usecols=["PodName", "TimeUnixNano", "Log"],
+                    )
+                    for i in range(1, len(log_reader["Log"])):
+                        log_parsing(
+                            log=log_reader["Log"][i],
+                            pod=log_reader["PodName"][i],
+                            log_template_miner=template_miner,
+                        )
 
         # ns = "ts"
         # config.load(dirname(__file__) + "/log_template/drain3_" + ns + ".ini")
@@ -184,13 +190,12 @@ if __name__ == '__main__':
         # template_miner = TemplateMiner(persistence, config=config)
         # folder_path_list = ['./rca_data/2023-01-29/log', './rca_data/2023-01-30/log']
 
-        # for folder_path in folder_path_list:    
+        # for folder_path in folder_path_list:
         #     for root, dirs, files in os.walk(folder_path):
         #         for file in files:
-        #             log_file = os.path.join(root, file) 
-        #             print(log_file)          
+        #             log_file = os.path.join(root, file)
+        #             print(log_file)
         #             log_reader = pd.read_csv(log_file, index_col=False, usecols=[
         #                 'PodName', 'TimeUnixNano', 'Log'])
         #             for i in range(1, len(log_reader['Log'])):
         #                 log_parsing(log=log_reader['Log'][i], pod=log_reader['PodName'][i], log_template_miner=template_miner)
-    
