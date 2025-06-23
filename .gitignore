@@ -1,2 +1,7 @@
 .vscode/
 __pycache__
+data
+log_template
+*.csv
+*.bin
+*.log
