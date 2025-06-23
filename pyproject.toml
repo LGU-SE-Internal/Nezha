@@ -1,9 +1,14 @@
 [project]
 name = "nezha"
 version = "0.1.0"
-description = "Add your description here"
+description = "Pattern mining and ranking system for log analysis and root cause analysis"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "drain3>=0.9.11",
+    "loguru>=0.7.3",
+    "numpy>=2.3.1",
+    "pandas>=2.3.0",
     "ruff>=0.12.0",
 ]
+
