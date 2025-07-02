@@ -501,7 +501,7 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
     # graph = generate_event_graph(trace)
     # event_graphs.append(graph)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor1:
+    with concurrent.futures.ProcessPoolExecutor() as executor1:
         futures1 = {executor1.submit(
             get_events_within_trace, trace_reader, log_reader, traceid, alarm_list, ns,log_template_miner) for traceid in trace_id_reader[0]}
 
@@ -511,7 +511,7 @@ def data_integrate(trace_file, trace_id_file, log_file, alarm_list, ns,log_templ
                 log_sequences.append(trace)
         executor1.shutdown()
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor2:
+    with concurrent.futures.ProcessPoolExecutor() as executor2:
         futures2 = {executor2.submit(
             generate_event_graph, trace,log_template_miner) for trace in log_sequences}
 
