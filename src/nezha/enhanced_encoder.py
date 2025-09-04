@@ -1,48 +1,107 @@
 """
 Enhanced Event Encoder for Nezha
 
-Extends rcabench_platform's event encoding with frequency counting support.
+Standalone encoder with frequency counting and threshold loading to avoid
+duplicating parent computations.
 """
 
+import datetime
+import math
 from collections import Counter, defaultdict
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import polars as pl
 from rcabench_platform.v2.logging import logger
-from rcabench_platform.v2.samplers.event_encoding import EventEncoder, EventIDManager
+from rcabench_platform.v2.samplers.event_encoding import EventIDManager
+from rcabench_platform.v2.utils.serde import load_json
 
 
-class NezhaEventEncoder(EventEncoder):
+class NezhaEventEncoder:
     """
-    Enhanced event encoder that returns pattern frequencies instead of just sets.
-
-    Extends rcabench_platform's EventEncoder to support frequency counting
-    for Nezha's enhanced pattern representation.
+    Enhanced event encoder that returns pattern frequencies and loads
+    performance thresholds without relying on parent encoder.
     """
 
-    def encode_trace_events_with_frequency(
-        self, trace_spans_df: pl.DataFrame, trace_logs_df: Optional[pl.DataFrame] = None
-    ) -> Dict[Tuple[int, int], int]:
-        """
-        Encode a single trace into event pairs with frequency counts.
+    def __init__(self, event_manager: EventIDManager):
+        self.event_manager = event_manager
+        self.performance_thresholds: Dict[str, float] = {}
 
-        Args:
-            trace_spans_df: DataFrame containing spans for one trace
-            trace_logs_df: Optional DataFrame containing logs for the trace
+    def load_inject_time(self, input_folder: Path) -> datetime.datetime:
+        """Load injection time from env.json (same logic as platform)."""
+        env = load_json(path=input_folder / "env.json")
 
-        Returns:
-            Dictionary mapping event pairs to their frequency counts
-        """
-        # Get basic event pairs from parent class
-        event_pairs_set = super().encode_trace_events(trace_spans_df, trace_logs_df)
+        normal_start = int(env["NORMAL_START"])
+        normal_end = int(env["NORMAL_END"])
+        abnormal_start = int(env["ABNORMAL_START"])
+        abnormal_end = int(env["ABNORMAL_END"])
 
-        # For now, since the parent returns a set, each pattern has frequency 1
-        # But we implement the frequency structure for future enhancements
-        event_pair_frequencies = {}
-        for pair in event_pairs_set:
-            event_pair_frequencies[pair] = 1
+        assert normal_start < normal_end <= abnormal_start < abnormal_end
 
-        return event_pair_frequencies
+        if normal_end < abnormal_start:
+            inject_time = int(math.ceil(normal_end + abnormal_start) / 2)
+        else:
+            inject_time = abnormal_start
+
+        inject_time = datetime.datetime.fromtimestamp(
+            inject_time, tz=datetime.timezone.utc
+        )
+        logger.debug(f"inject_time=`{inject_time}`")
+
+        return inject_time
+
+    def load_performance_thresholds(self, input_folder: Path) -> None:
+        """Load p90 thresholds per service_span from metrics_sli.parquet (normal only)."""
+        try:
+            metrics_sli_path = input_folder / "metrics_sli.parquet"
+            if not metrics_sli_path.exists():
+                logger.warning(
+                    "metrics_sli.parquet not found, performance degradation detection disabled"
+                )
+                return
+
+            metrics_df = pl.read_parquet(metrics_sli_path)
+
+            # Filter to only normal phase data for unbiased threshold calculation
+            try:
+                inject_time = self.load_inject_time(input_folder)
+                metrics_df = metrics_df.filter(pl.col("time") < inject_time)
+                logger.debug(
+                    f"Filtered metrics_sli to {len(metrics_df)} normal phase records for threshold calculation"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load inject time, using all metrics_sli data: {e}"
+                )
+
+            # Calculate p90 thresholds per service_name + span_name using normal phase data only
+            thresholds_df = (
+                metrics_df.group_by(["service_name", "span_name"])
+                .agg([pl.col("duration_p90").mean().alias("p90_threshold")])
+                .with_columns(
+                    [
+                        pl.concat_str(
+                            ["service_name", "span_name"], separator="_"
+                        ).alias("service_span_name")
+                    ]
+                )
+            )
+
+            for row in thresholds_df.iter_rows(named=True):
+                service_span_name = row["service_span_name"]
+                p90_threshold = row["p90_threshold"]
+                if p90_threshold is not None:
+                    # Convert to nanoseconds (metrics_sli is in ms, traces are in ns)
+                    self.performance_thresholds[service_span_name] = (
+                        p90_threshold * 1_000_000
+                    )
+
+            logger.debug(
+                f"Loaded performance thresholds for {len(self.performance_thresholds)} span types"
+            )
+
+        except Exception as e:
+            logger.warning(f"Failed to load performance thresholds: {e}")
 
     def encode_trace_events_detailed(
         self, trace_spans_df: pl.DataFrame, trace_logs_df: Optional[pl.DataFrame] = None
