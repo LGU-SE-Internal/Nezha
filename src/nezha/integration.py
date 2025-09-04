@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from rcabench_platform.v2.logging import logger
 
-from .algorithms import run_nezha_analysis
+from .algorithms import NezhaAlgorithm, run_nezha_analysis
 from .data_structures import ServiceMapping, TraceData
 from .preprocessor import NezhaPreprocessor
 
@@ -161,8 +161,7 @@ class NezhaIntegrator:
             return {"error": "Event manager not initialized"}
 
         # Use algorithm to explain pattern
-        from nezha.algorithms import NezhaAlgorithm
-
+        assert self.service_mapping is not None, "Service mapping not available"
         algorithm = NezhaAlgorithm(self.service_mapping)
 
         return algorithm.explain_pattern(pattern, self.preprocessor.event_manager)
@@ -206,7 +205,7 @@ def run_nezha_pipeline(
     need_logs: bool = True,
     ground_truth: Optional[Set[Tuple[int, int]]] = None,
     return_id_manager: bool = False,
-) -> Dict:
+) -> Dict | Tuple[Dict, Optional[object]]:
     """
     Run complete Nezha pipeline.
 
@@ -250,8 +249,7 @@ def run_nezha_pipeline(
 
     if return_id_manager:
         return results, integrator.preprocessor.event_manager
-    else:
-        return results
+    return results
 
 
 # Convenience functions for specific datasets
@@ -260,7 +258,10 @@ def run_nezha_hipster(
 ) -> Dict:
     """Run Nezha on OnlineBoutique (hipster) dataset."""
     logger.info("Running Nezha on OnlineBoutique dataset...")
-    return run_nezha_pipeline(data_folder, **kwargs)
+    result = run_nezha_pipeline(data_folder, return_id_manager=False, **kwargs)
+    if isinstance(result, tuple):
+        return result[0]
+    return result
 
 
 def run_nezha_trainticket(
@@ -268,7 +269,10 @@ def run_nezha_trainticket(
 ) -> Dict:
     """Run Nezha on TrainTicket dataset."""
     logger.info("Running Nezha on TrainTicket dataset...")
-    return run_nezha_pipeline(data_folder, **kwargs)
+    result = run_nezha_pipeline(data_folder, return_id_manager=False, **kwargs)
+    if isinstance(result, tuple):
+        return result[0]
+    return result
 
 
 if __name__ == "__main__":
@@ -292,7 +296,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    results = run_nezha_pipeline(
+    results_any = run_nezha_pipeline(
         input_folder=args.input_folder,
         output_file=args.output,
         inject_time=args.inject_time,
@@ -302,13 +306,14 @@ if __name__ == "__main__":
         top_k=args.top_k,
         need_logs=not args.no_logs,
     )
+    results = results_any[0] if isinstance(results_any, tuple) else results_any
 
     # Print summary
     print("\nNezha Analysis Results:")
     print(f"Found {len(results['ranked_patterns'])} suspicious patterns")
     print(f"Processing time: {results['processing_time_seconds']:.2f}s")
 
-    if results["top_k_accuracy"]:
+    if results.get("top_k_accuracy"):
         print("\nAccuracy Results:")
         for k, acc in results["top_k_accuracy"].items():
             print(f"  Top-{k}: {acc:.2f}%")

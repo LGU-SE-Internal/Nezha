@@ -54,7 +54,7 @@ class RCAResult:
     total_abnormal_patterns: int
     total_normal_patterns: int
     processing_time_seconds: float
-    top_k_accuracy: Dict[int, float] = None
+    top_k_accuracy: Optional[Dict[int, float]] = None
 
 
 class NezhaAlgorithm:
