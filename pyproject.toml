@@ -1,17 +1,32 @@
 [project]
 name = "nezha"
-version = "0.1.0"
-description = "Add your description here"
+version = "2.0.0"
+description = "Optimized service-level root cause analysis for microservices"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
-    "drain3>=0.9.11",
-    "matplotlib>=3.10.3",
-    "more-itertools>=10.7.0",
-    "numpy>=2.3.1",
-    "pandas>=2.3.0",
-    "psutil>=7.0.0",
+    "polars>=0.20.0",
     "pyarrow>=20.0.0",
-    "pyyaml>=6.0.2",
-    "tqdm>=4.67.1",
+    "rcabench-platform==0.3.34rc7"
+]
+
+[project.scripts]
+nezha = "nezha.cli:main"
+nezha-rcabench = "nezha.cli:rcabench_main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "black>=22.0",
+    "isort>=5.0",
+]
+legacy = [
+    "drain3>=0.9.11",
+    "matplotlib>=3.7.0", 
+    "more-itertools>=10.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "psutil>=5.9.0",
+    "pyyaml>=6.0.0",
+    "tqdm>=4.65.0",
 ]
