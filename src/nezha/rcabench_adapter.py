@@ -34,24 +34,11 @@ class NezhaAlgorithm(Algorithm):
             # Extract parameters from args
             input_folder = Path(args.input_folder)
 
-            # Get algorithm parameters with defaults
-            normal_ratio = getattr(args, "normal_ratio", 0.6)
-            min_support = getattr(args, "min_support", 3)
-            min_score = getattr(args, "min_score", 0.5)
-            top_k = getattr(args, "top_k", 50)  # Get more patterns for aggregation
 
-            logger.info(
-                f"Running Nezha with parameters: normal_ratio={normal_ratio}, "
-                f"min_support={min_support}, min_score={min_score}, top_k={top_k}"
-            )
 
             # Run Nezha analysis
             results = run_nezha_pipeline(
                 input_folder=input_folder,
-                normal_ratio=normal_ratio,
-                min_support=min_support,
-                min_score=min_score,
-                top_k=top_k,
                 need_logs=True,
             )
 
@@ -69,7 +56,6 @@ class NezhaAlgorithm(Algorithm):
                     level="service",
                     name=service_name,
                     rank=i,
-                    score=service_score,  # Include aggregated score
                 )
                 answers.append(answer)
 

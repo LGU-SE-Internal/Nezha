@@ -11,9 +11,9 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from rcabench_platform.v2.logging import logger
 
-from nezha.algorithms import run_nezha_analysis
-from nezha.data_structures import ServiceMapping, TraceData
-from nezha.preprocessor import NezhaPreprocessor
+from .algorithms import run_nezha_analysis
+from .data_structures import ServiceMapping, TraceData
+from .preprocessor import NezhaPreprocessor
 
 
 class NezhaIntegrator:

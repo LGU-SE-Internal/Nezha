@@ -1,5 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
 .vscode/
-__pycache__
+.idea/
+
 data
-log
-test
+output/
+temp/
+
+*.parquet
+
+test/
