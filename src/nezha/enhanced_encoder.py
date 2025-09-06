@@ -23,7 +23,7 @@ class NezhaEventEncoder:
     performance thresholds without relying on parent encoder.
     """
 
-    def __init__(self, event_manager: EventIDManager):
+    def __init__(self, event_manager: "NezhaEventIDManager"):
         self.event_manager = event_manager
         self.performance_thresholds: Dict[str, float] = {}
 
@@ -171,15 +171,17 @@ class NezhaEventEncoder:
 
             # Add status error event (if applicable)
             if span_data.get("attr.status_code") == "Error":
-                error_event_id = self.event_manager.get_special_event_id("status_error")
+                error_event_id = self.event_manager.get_service_special_event_id(
+                    "status_error", service_span_name
+                )
                 span_events.append(error_event_id)
 
             # Add performance degradation event (if applicable)
             duration = span_data.get("duration", 0)
             p90_threshold = self.performance_thresholds.get(service_span_name)
             if p90_threshold and duration > p90_threshold:
-                perf_event_id = self.event_manager.get_special_event_id(
-                    "perf_degradation"
+                perf_event_id = self.event_manager.get_service_special_event_id(
+                    "perf_degradation", service_span_name
                 )
                 span_events.append(perf_event_id)
 
@@ -238,7 +240,45 @@ class NezhaEventEncoder:
 class NezhaEventIDManager(EventIDManager):
     """
     Enhanced Event ID Manager for Nezha with additional utility methods.
+    Supports dynamic special events per service_span_name.
     """
+
+    def __init__(self):
+        super().__init__()
+        # Dynamic special events mapping: (service_span_name, event_type) -> event_id
+        self.service_special_events: Dict[Tuple[str, str], int] = {}
+
+    def get_special_event_id(self, event_type: str) -> int:
+        """
+        Get event ID for global special events (backward compatibility).
+
+        Args:
+            event_type: Type of special event ('status_error', 'perf_degradation')
+
+        Returns:
+            Event ID for the global special event
+        """
+        return super().get_special_event_id(event_type)
+
+    def get_service_special_event_id(
+        self, event_type: str, service_span_name: str
+    ) -> int:
+        """
+        Get event ID for service-scoped special events.
+
+        Args:
+            event_type: Type of special event ('status_error', 'perf_degradation')
+            service_span_name: Service span scope for the event
+
+        Returns:
+            Event ID for the service-scoped special event
+        """
+        key = (service_span_name, event_type)
+        if key not in self.service_special_events:
+            self.service_special_events[key] = self.special_event_counter
+            self.special_event_counter += 1
+
+        return self.service_special_events[key]
 
     def get_event_type(self, event_id: int) -> str:
         """
@@ -288,10 +328,19 @@ class NezhaEventIDManager(EventIDManager):
             return f"END: ID_{event_id}"
 
         elif event_type == "special_event":
-            # Find the special event type
+            # Check both global and service-scoped special events
             for event_name, id_val in self.special_event_to_id.items():
                 if id_val == event_id:
                     return f"SPECIAL: {event_name}"
+
+            # Check service-scoped special events
+            for (
+                service_span_name,
+                event_name,
+            ), id_val in self.service_special_events.items():
+                if id_val == event_id:
+                    return f"SPECIAL: {service_span_name}_{event_name}"
+
             return f"SPECIAL: ID_{event_id}"
 
         elif event_type == "log_template":
