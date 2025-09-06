@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "polars>=0.20.0",
     "pyarrow>=20.0.0",
-    "rcabench-platform==0.3.34rc7"
+    "rcabench-platform==0.3.34rc15"
 ]
 
 [build-system]
