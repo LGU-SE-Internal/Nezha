@@ -19,46 +19,19 @@ class EnhancedEventPattern:
         pattern: Unique tuple representation (source_event_id, target_event_id)
         count: Number of occurrences of this pattern in the trace
         depth: Depth of the pattern in the span hierarchy
-        service: Service identifier (encoded as integer)
+        service: Service name (string)
     """
 
     pattern: Tuple[int, int]
     count: int
     depth: int
-    service: int
+    service: str
 
     def __hash__(self) -> int:
         return hash(self.pattern)
 
     def __eq__(self, other) -> bool:
         return isinstance(other, EnhancedEventPattern) and self.pattern == other.pattern
-
-
-@dataclass
-class ServiceMapping:
-    """
-    Service name to integer ID mapping.
-    """
-
-    service_to_id: Dict[str, int]
-    id_to_service: Dict[int, str]
-
-    @classmethod
-    def create(cls, service_names: List[str]) -> "ServiceMapping":
-        """Create mapping from service names list."""
-        service_to_id = {
-            name: idx for idx, name in enumerate(sorted(set(service_names)))
-        }
-        id_to_service = {idx: name for name, idx in service_to_id.items()}
-        return cls(service_to_id=service_to_id, id_to_service=id_to_service)
-
-    def get_service_id(self, service_name: str) -> int:
-        """Get service ID for service name."""
-        return self.service_to_id.get(service_name, -1)
-
-    def get_service_name(self, service_id: int) -> str:
-        """Get service name for service ID."""
-        return self.id_to_service.get(service_id, "unknown")
 
 
 @dataclass
@@ -118,7 +91,7 @@ class PatternSupport:
     def __init__(self):
         self.pattern_counts: Dict[Tuple[int, int], int] = {}
         self.pattern_depths: Dict[Tuple[int, int], List[int]] = {}
-        self.pattern_services: Dict[Tuple[int, int], Set[int]] = {}
+        self.pattern_services: Dict[Tuple[int, int], Set[str]] = {}
 
     def add_pattern(self, pattern: EnhancedEventPattern) -> None:
         """Add a pattern to support calculation."""

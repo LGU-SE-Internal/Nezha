@@ -15,7 +15,6 @@ from .data_structures import (
     EnhancedEventPattern,
     PatternSupport,
     ProcessingMetrics,
-    ServiceMapping,
     TraceData,
 )
 from .enhanced_encoder import NezhaEventEncoder, NezhaEventIDManager
@@ -39,7 +38,6 @@ class NezhaPreprocessor:
         self.input_folder = input_folder
         self.event_manager = None
         self.encoder = None
-        self.service_mapping = None
         self.performance_thresholds = {}
 
         # Statistics
@@ -61,19 +59,6 @@ class NezhaPreprocessor:
         self.performance_thresholds = self.encoder.performance_thresholds.copy()
 
         logger.info(f"Loaded {len(self.performance_thresholds)} performance thresholds")
-
-    def create_service_mapping(self, traces_df: pl.DataFrame) -> ServiceMapping:
-        """Create service name to ID mapping."""
-        logger.info("Creating service mapping...")
-
-        # Get unique service names
-        service_names = traces_df.select("service_name").unique().to_series().to_list()
-
-        # Create mapping
-        self.service_mapping = ServiceMapping.create(service_names)
-
-        logger.info(f"Created mapping for {len(service_names)} services")
-        return self.service_mapping
 
     def compute_span_depths(self, trace_spans_df: pl.DataFrame) -> Dict[str, int]:
         """
@@ -164,7 +149,6 @@ class NezhaPreprocessor:
 
         # Ensure dependencies are initialized
         assert self.event_manager is not None, "Event manager not initialized"
-        assert self.service_mapping is not None, "Service mapping not initialized"
 
         # Build event to span/service mapping using event manager (vectorized extraction)
         event_to_span: Dict[int, str] = {}
@@ -226,13 +210,9 @@ class NezhaPreprocessor:
                 source_id
             ) or event_to_service.get(target_id, "unknown")
 
-            pattern_service_id = self.service_mapping.get_service_id(
-                pattern_service_name
-            )
-
             pattern_info[pattern_key] = {
                 "depth": pattern_depth,
-                "service": pattern_service_id,
+                "service": pattern_service_name,  # Use service name directly
                 "frequency": frequency,
             }
 
@@ -368,9 +348,6 @@ class NezhaPreprocessor:
 
         # Initialize encoding system
         self.initialize_encoding_system(traces_df)
-
-        # Create service mapping
-        self.create_service_mapping(traces_df)
 
         # Group traces by trace_id
         trace_groups = traces_df.partition_by("trace_id", as_dict=True)

@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from rcabench_platform.v2.logging import logger
 
-from .data_structures import PatternSupport, ServiceMapping, TraceData
+from .data_structures import PatternSupport, TraceData
 
 
 @dataclass
@@ -33,7 +33,7 @@ class PatternScore:
     normal_support: int
     score: float
     depth: float
-    services: Set[int]
+    services: Set[str]
     rank: int = 0
 
 
@@ -65,14 +65,11 @@ class NezhaAlgorithm:
     suspicious patterns that could indicate root causes.
     """
 
-    def __init__(self, service_mapping: ServiceMapping):
+    def __init__(self):
         """
         Initialize algorithm.
-
-        Args:
-            service_mapping: Service name to ID mapping
         """
-        self.service_mapping = service_mapping
+        pass
 
     def calculate_pattern_support(
         self, trace_data_list: List[TraceData]
@@ -337,7 +334,6 @@ class NezhaAlgorithm:
 def run_nezha_analysis(
     normal_traces: List[TraceData],
     abnormal_traces: List[TraceData],
-    service_mapping: ServiceMapping,
     ground_truth: Optional[Set[Tuple[int, int]]] = None,
     min_support: int = 5,
     min_score: float = 0.67,
@@ -349,7 +345,6 @@ def run_nezha_analysis(
     Args:
         normal_traces: List of normal trace data
         abnormal_traces: List of abnormal trace data
-        service_mapping: Service name to ID mapping
         ground_truth: Optional ground truth for evaluation
         min_support: Minimum pattern support threshold
         min_score: Minimum suspiciousness score threshold
@@ -359,7 +354,7 @@ def run_nezha_analysis(
         RCA result with ranked suspicious patterns
     """
     # Initialize algorithm
-    algorithm = NezhaAlgorithm(service_mapping)
+    algorithm = NezhaAlgorithm()
 
     # Perform analysis
     result = algorithm.analyze_root_causes(

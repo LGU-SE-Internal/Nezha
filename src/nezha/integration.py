@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from rcabench_platform.v2.logging import logger
 
 from .algorithms import NezhaAlgorithm, run_nezha_analysis
-from .data_structures import ServiceMapping, TraceData
+from .data_structures import TraceData
 from .preprocessor import NezhaPreprocessor
 
 
@@ -36,7 +36,6 @@ class NezhaIntegrator:
 
         # Results storage
         self.trace_data_list: List[TraceData] = []
-        self.service_mapping: Optional[ServiceMapping] = None
         self.normal_traces: List[TraceData] = []
         self.abnormal_traces: List[TraceData] = []
 
@@ -53,9 +52,6 @@ class NezhaIntegrator:
         self.trace_data_list, metrics = self.preprocessor.load_and_process_data(
             need_logs=need_logs
         )
-
-        # Store service mapping
-        self.service_mapping = self.preprocessor.service_mapping
 
         logger.info(f"Preprocessed {len(self.trace_data_list)} traces")
 
@@ -109,16 +105,12 @@ class NezhaIntegrator:
         if not self.normal_traces or not self.abnormal_traces:
             raise ValueError("Must separate traces before running analysis")
 
-        if not self.service_mapping:
-            raise ValueError("Service mapping not available")
-
         logger.info("Running Nezha root cause analysis...")
 
         # Run analysis
         result = run_nezha_analysis(
             normal_traces=self.normal_traces,
             abnormal_traces=self.abnormal_traces,
-            service_mapping=self.service_mapping,
             ground_truth=ground_truth,
             min_support=min_support,
             min_score=min_score,
@@ -161,8 +153,7 @@ class NezhaIntegrator:
             return {"error": "Event manager not initialized"}
 
         # Use algorithm to explain pattern
-        assert self.service_mapping is not None, "Service mapping not available"
-        algorithm = NezhaAlgorithm(self.service_mapping)
+        algorithm = NezhaAlgorithm()
 
         return algorithm.explain_pattern(pattern, self.preprocessor.event_manager)
 

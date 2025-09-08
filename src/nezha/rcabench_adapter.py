@@ -34,13 +34,18 @@ class NezhaAlgorithm(Algorithm):
             # Extract parameters from args
             input_folder = Path(args.input_folder)
 
-
-
             # Run Nezha analysis
-            results = run_nezha_pipeline(
+            results_any = run_nezha_pipeline(
                 input_folder=input_folder,
                 need_logs=True,
+                return_id_manager=False,
             )
+
+            # Handle potential tuple return
+            if isinstance(results_any, tuple):
+                results = results_any[0]
+            else:
+                results = results_any
 
             if not results or not results.get("ranked_patterns"):
                 logger.warning("No results from Nezha analysis")
@@ -87,10 +92,7 @@ class NezhaAlgorithm(Algorithm):
         if not ranked_patterns:
             return []
 
-        # Load service mapping to convert service IDs to names
-        service_id_to_name = self._load_service_mapping(results)
-
-        # Aggregate scores by service
+        # Aggregate scores by service (services are now direct service names)
         service_scores = defaultdict(list)
         service_pattern_counts = Counter()
         service_total_abnormal_support = defaultdict(int)
@@ -100,11 +102,7 @@ class NezhaAlgorithm(Algorithm):
             score = pattern_info.get("score", 0.0)
             abnormal_support = pattern_info.get("abnormal_support", 0)
 
-            for service_id in services:
-                service_name = service_id_to_name.get(
-                    service_id, f"service_{service_id}"
-                )
-
+            for service_name in services:
                 # Collect scores for this service
                 service_scores[service_name].append(score)
                 service_pattern_counts[service_name] += 1
@@ -158,62 +156,6 @@ class NezhaAlgorithm(Algorithm):
 
         return service_rankings
 
-    def _load_service_mapping(self, results: Dict) -> Dict[int, str]:
-        """
-        Load service ID to name mapping from results.
-
-        Args:
-            results: Nezha analysis results
-
-        Returns:
-            Dictionary mapping service IDs to service names
-        """
-        # Try to get service mapping from results
-        service_mapping = results.get("service_mapping", {})
-
-        if service_mapping and isinstance(service_mapping, dict):
-            # If we have the mapping, create reverse mapping (id -> name)
-            id_to_name = {}
-            for name, service_id in service_mapping.items():
-                id_to_name[service_id] = name
-            return id_to_name
-
-        # Fallback: create generic service names based on common TrainTicket services
-        default_services = {
-            1: "loadgenerator",
-            2: "ts-admin-basic-info-service",
-            3: "ts-basic-service",
-            4: "ts-ticketinfo-service",
-            5: "ts-order-service",
-            6: "ts-order-other-service",
-            7: "ts-config-service",
-            8: "ts-station-service",
-            9: "ts-train-service",
-            10: "ts-travel-service",
-            11: "ts-travel2-service",
-            12: "ts-preserve-service",
-            13: "ts-preserve-other-service",
-            14: "ts-preserve-service",
-            15: "ts-security-service",
-            16: "ts-preserve-service",
-            17: "ts-contacts-service",
-            18: "ts-price-service",
-            19: "ts-notification-service",
-            20: "ts-inside-payment-service",
-            21: "ts-execute-service",
-            22: "ts-payment-service",
-            23: "ts-rebook-service",
-            24: "ts-cancel-service",
-            25: "ts-assurance-service",
-            26: "ts-travel2-service",
-            27: "ts-seat-service",
-            28: "ts-food-service",
-            29: "ts-consign-service",
-            30: "ts-user-service",
-        }
-
-        return default_services
-
 
 def nezha_analysis(input_folder: Path, **kwargs) -> Dict:
     """
@@ -226,4 +168,7 @@ def nezha_analysis(input_folder: Path, **kwargs) -> Dict:
     Returns:
         Analysis results dictionary
     """
-    return run_nezha_pipeline(input_folder, **kwargs)
+    result = run_nezha_pipeline(input_folder, return_id_manager=False, **kwargs)
+    if isinstance(result, tuple):
+        return result[0]
+    return result
