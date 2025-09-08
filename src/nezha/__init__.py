@@ -12,7 +12,6 @@ from .data_structures import (
     EnhancedEventPattern,
     PatternSupport,
     ProcessingMetrics,
-    ServiceMapping,
     TraceData,
 )
 from .preprocessor import NezhaPreprocessor
@@ -20,7 +19,6 @@ from .preprocessor import NezhaPreprocessor
 __all__ = [
     "EnhancedEventPattern",
     "TraceData",
-    "ServiceMapping",
     "ProcessingMetrics",
     "PatternSupport",
     "NezhaPreprocessor",

@@ -139,11 +139,16 @@ class NezhaAlgorithm(Algorithm):
 
             service_rankings.append((service_name, aggregated_score))
 
-        # Sort by aggregated score (descending)
+        # Filter out loadgenerator service and sort by aggregated score (descending)
+        service_rankings = [
+            (service_name, score)
+            for service_name, score in service_rankings
+            if service_name != "loadgenerator"
+        ]
         service_rankings.sort(key=lambda x: x[1], reverse=True)
 
         logger.info(
-            f"Aggregated {len(ranked_patterns)} patterns into {len(service_rankings)} service rankings"
+            f"Aggregated {len(ranked_patterns)} patterns into {len(service_rankings)} service rankings (excluding loadgenerator)"
         )
 
         # Log top services for debugging
