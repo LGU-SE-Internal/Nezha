@@ -248,17 +248,7 @@ class NezhaEventIDManager(EventIDManager):
         # Dynamic special events mapping: (service_span_name, event_type) -> event_id
         self.service_special_events: Dict[Tuple[str, str], int] = {}
 
-    def get_special_event_id(self, event_type: str) -> int:
-        """
-        Get event ID for global special events (backward compatibility).
-
-        Args:
-            event_type: Type of special event ('status_error', 'perf_degradation')
-
-        Returns:
-            Event ID for the global special event
-        """
-        return super().get_special_event_id(event_type)
+    
 
     def get_service_special_event_id(
         self, event_type: str, service_span_name: str
@@ -273,12 +263,14 @@ class NezhaEventIDManager(EventIDManager):
         Returns:
             Event ID for the service-scoped special event
         """
-        key = (service_span_name, event_type)
-        if key not in self.service_special_events:
-            self.service_special_events[key] = self.special_event_counter
-            self.special_event_counter += 1
+        if event_type not in ["status_error", "perf_degradation"]:
+            raise ValueError(f"Unsupported service special event type: {event_type}")
+        if event_type == "status_error":
+            return self.get_status_error_id(service_span_name)
+            
+        if event_type == "perf_degradation":
+            return self.get_perf_degradation_id(service_span_name)
 
-        return self.service_special_events[key]
 
     def get_event_type(self, event_id: int) -> str:
         """

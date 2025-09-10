@@ -201,10 +201,6 @@ class NezhaPreprocessor:
                         event_to_span[log_event_id] = span_id
                         event_to_service[log_event_id] = service_name
 
-        # Add special events mapping (placeholder for context)
-        for event_type in ["status_error", "perf_degradation"]:
-            _ = self.event_manager.get_special_event_id(event_type)
-            # Special events inherit from their context span - handled in pattern creation
 
         # Since event_pair_frequencies is a dict, we use the actual frequencies
         pattern_info = {}
