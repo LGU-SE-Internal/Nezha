@@ -44,7 +44,7 @@ class NezhaEventEncoder:
             inject_time = abnormal_start
 
         inject_time = datetime.datetime.fromtimestamp(
-            inject_time, tz=datetime.timezone.utc
+            inject_time
         )
         logger.debug(f"inject_time=`{inject_time}`")
 
@@ -65,9 +65,10 @@ class NezhaEventEncoder:
             # Filter to only normal phase data for unbiased threshold calculation
             try:
                 inject_time = self.load_inject_time(input_folder)
+                original_count = len(metrics_df)
                 metrics_df = metrics_df.filter(pl.col("time") < inject_time)
                 logger.debug(
-                    f"Filtered metrics_sli to {len(metrics_df)} normal phase records for threshold calculation"
+                    f"Filtered metrics_sli from {original_count} to {len(metrics_df)} normal phase records for threshold calculation"
                 )
             except Exception as e:
                 logger.warning(
@@ -114,8 +115,8 @@ class NezhaEventEncoder:
         """
         # Check for root span
         root_spans_df = trace_spans_df.filter(
-            (pl.col("service_name") == "loadgenerator")
-            & (pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == ""))
+            #(pl.col("service_name") == "loadgenerator")&
+            (pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == ""))
         )
 
         if root_spans_df.height == 0:

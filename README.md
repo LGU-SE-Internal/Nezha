@@ -4,28 +4,32 @@
 sudo juicefs mount redis://10.10.10.119:6379/1 /mnt/jfs -d --cache-size=1024
 mkdir data
 ln -s /mnt/jfs/rcabench_dataset ./data/
-export RCABENCH_BASE_URL=http://10.10.10.220:32080
-export RCABENCH_USERNAME=admin
-export RCABENCH_PASSWORD=admin123
-
-
-```
-# build
-```sh
-docker build -t 10.10.10.240/library/rca-algo-nezha:study .
-```
-# upload
-```sh
-rca upload-algorithm-harbor ./
-```
-# test
-```sh
-sudo -E .venv/bin/python run.py batch-test --label 9.6nezha # note this label, we will use it later for cross-dataset metrics
+ln -s /mnt/jfs/rcabench-platform-v2 ./data/
 ```
 
-# check accuracy
 ```sh
-# use the latest platform
-rca cross-dataset-metrics -a nezha -d pair-diag -dv all-absolute_anomaly-9.3 --tag 9.6nezha
+export LOGURU_LEVEL=INFO
+uv run python main.py  eval batch -a nezha -d metis-ts --clear
+uv run python main.py  eval batch -a nezha -d metis-ob --clear
+uv run python main.py  eval perf-report metis-ts
+uv run python main.py  eval perf-report metis-ob
 ```
+```
+┌──────────┬───────────┬───────┬───────┬────────────────┬─────────┬────────────┬────────────┬────────────┬──────────┬──────────┬──────────┬──────────┬─────────┐
+│ dataset  ┆ algorithm ┆ total ┆ error ┆ runtime.second ┆     MRR ┆ AC@1.count ┆ AC@3.count ┆ AC@5.count ┆     AC@1 ┆     AC@3 ┆     AC@5 ┆    Avg@3 ┆   Avg@5 │
+│ ---      ┆ ---       ┆   --- ┆   --- ┆          s:avg ┆     --- ┆        --- ┆        --- ┆        --- ┆      --- ┆      --- ┆      --- ┆      --- ┆     --- │
+│ str      ┆ str       ┆   u32 ┆   u32 ┆            --- ┆     f64 ┆        f64 ┆        f64 ┆        f64 ┆      f64 ┆      f64 ┆      f64 ┆      f64 ┆     f64 │
+│          ┆           ┆       ┆       ┆            f64 ┆         ┆            ┆            ┆            ┆          ┆          ┆          ┆          ┆         │
+╞══════════╪═══════════╪═══════╪═══════╪════════════════╪═════════╪════════════╪════════════╪════════════╪══════════╪══════════╪══════════╪══════════╪═════════╡
+│ metis-ts ┆ nezha     ┆   153 ┆     0 ┆      20.113886 ┆ 0.57037 ┆        6.0 ┆       15.0 ┆       18.0 ┆ 0.039216 ┆ 0.098039 ┆ 0.117647 ┆ 0.067538 ┆ 0.08366 │
+└──────────┴───────────┴───────┴───────┴────────────────┴─────────┴────────────┴────────────┴────────────┴──────────┴──────────┴──────────┴──────────┴─────────┘
 
+┌──────────┬───────────┬───────┬───────┬─────────────────────┬─────┬────────────┬────────────┬────────────┬──────┬──────┬──────┬───────┬───────┐
+│ dataset  ┆ algorithm ┆ total ┆ error ┆ runtime.seconds:avg ┆ MRR ┆ AC@1.count ┆ AC@3.count ┆ AC@5.count ┆ AC@1 ┆ AC@3 ┆ AC@5 ┆ Avg@3 ┆ Avg@5 │
+│ ---      ┆ ---       ┆   --- ┆   --- ┆                 --- ┆ --- ┆        --- ┆        --- ┆        --- ┆  --- ┆  --- ┆  --- ┆   --- ┆   --- │
+│ str      ┆ str       ┆   u32 ┆   u32 ┆                 f64 ┆ f64 ┆        f64 ┆        f64 ┆        f64 ┆  f64 ┆  f64 ┆  f64 ┆   f64 ┆   f64 │
+╞══════════╪═══════════╪═══════╪═══════╪═════════════════════╪═════╪════════════╪════════════╪════════════╪══════╪══════╪══════╪═══════╪═══════╡
+│ metis-ob ┆ nezha     ┆    14 ┆     0 ┆          225.637092 ┆ 0.0 ┆        0.0 ┆        0.0 ┆        0.0 ┆  0.0 ┆  0.0 ┆  0.0 ┆   0.0 ┆   0.0 │
+└──────────┴───────────┴───────┴───────┴─────────────────────┴─────┴────────────┴────────────┴────────────┴──────┴──────┴──────┴───────┴───────┘
+
+```
