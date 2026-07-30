@@ -6,7 +6,7 @@ Handles data loading, event encoding, and preparation for Nezha algorithm.
 
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import polars as pl
 from rcabench_platform.v2.logging import logger
@@ -41,6 +41,8 @@ class NezhaPreprocessor:
         self.encoder = None
         self.service_mapping = None
         self.performance_thresholds = {}
+        self.normal_trace_ids: Set[str] = set()
+        self.abnormal_trace_ids: Set[str] = set()
 
         # Statistics
         self.processing_metrics = None
@@ -115,10 +117,10 @@ class NezhaPreprocessor:
             if pid and pid != "":
                 children_map[pid].append(sid)
 
-        # Identify roots: loadgenerator with no parent
+        # Identify roots using the native entry service of each system.
         roots: List[str] = []
-        for sid, pid, sname in zip(span_ids, parent_ids, service_names):
-            if sname == "loadgenerator" and (not pid or pid == ""):
+        for sid, pid, _ in zip(span_ids, parent_ids, service_names):
+            if not pid or pid == "":
                 roots.append(sid)
                 span_depths[sid] = 0
 
@@ -331,11 +333,10 @@ class NezhaPreprocessor:
         # Determine root service
         root_service = "unknown"
         root_spans = trace_df.filter(
-            (pl.col("service_name") == "loadgenerator")
-            & (pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == ""))
+            pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == "")
         )
         if not root_spans.is_empty():
-            root_service = "loadgenerator"
+            root_service = root_spans.get_column("service_name")[0]
 
         return TraceData(
             trace_id=trace_id,
@@ -434,6 +435,14 @@ class NezhaPreprocessor:
         # Load traces (always needed)
         normal_traces = pl.read_parquet(self.input_folder / "normal_traces.parquet")
         abnormal_traces = pl.read_parquet(self.input_folder / "abnormal_traces.parquet")
+        self.normal_trace_ids = set(normal_traces.get_column("trace_id").drop_nulls())
+        self.abnormal_trace_ids = set(abnormal_traces.get_column("trace_id").drop_nulls())
+        overlap = self.normal_trace_ids & self.abnormal_trace_ids
+        if overlap:
+            logger.warning(
+                f"Assigning {len(overlap)} boundary-crossing traces to the abnormal phase"
+            )
+            self.normal_trace_ids -= overlap
         traces_df = pl.concat([normal_traces, abnormal_traces])
 
         logger.info(f"Loaded {len(traces_df)} trace records")

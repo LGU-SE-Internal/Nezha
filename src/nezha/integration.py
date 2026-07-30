@@ -54,6 +54,17 @@ class NezhaIntegrator:
             need_logs=need_logs
         )
 
+        self.normal_traces = [
+            trace
+            for trace in self.trace_data_list
+            if trace.trace_id in self.preprocessor.normal_trace_ids
+        ]
+        self.abnormal_traces = [
+            trace
+            for trace in self.trace_data_list
+            if trace.trace_id in self.preprocessor.abnormal_trace_ids
+        ]
+
         # Store service mapping
         self.service_mapping = self.preprocessor.service_mapping
 
@@ -69,6 +80,13 @@ class NezhaIntegrator:
             inject_time: Optional injection time to separate traces
             normal_ratio: If no inject_time, use this ratio for separation
         """
+        if self.normal_traces and self.abnormal_traces:
+            logger.info(
+                f"Using input partitions with {len(self.normal_traces)} normal "
+                f"and {len(self.abnormal_traces)} abnormal traces"
+            )
+            return
+
         if inject_time:
             # TODO: Implement time-based separation when trace timestamps are available
             logger.warning("Time-based separation not yet implemented, using ratio")
