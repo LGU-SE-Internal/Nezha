@@ -127,6 +127,7 @@ class NezhaIntegrator:
 
         # Convert to dictionary format for easier consumption
         results_dict = {
+            "service_mapping": self.service_mapping.service_to_id,
             "ranked_patterns": [
                 {
                     "pattern": pattern.pattern,

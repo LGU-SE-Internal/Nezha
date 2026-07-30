@@ -112,14 +112,13 @@ class NezhaEventEncoder:
         This method reimplements the encoding logic to properly count
         how many times each event transition occurs within a single trace.
         """
-        # Check for root span
+        # Accept the native root service of each benchmarked system.
         root_spans_df = trace_spans_df.filter(
-            (pl.col("service_name") == "loadgenerator")
-            & (pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == ""))
+            pl.col("parent_span_id").is_null() | (pl.col("parent_span_id") == "")
         )
 
         if root_spans_df.height == 0:
-            logger.debug("No loadgenerator root span found, skipping trace")
+            logger.debug("No root span found, skipping trace")
             return {}
 
         # Build span hierarchy
